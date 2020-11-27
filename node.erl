@@ -1,7 +1,8 @@
 -module(node).
--export([initThreads/8, join/1, getNeigs/2, listen/0,first/1,second/1, second_list/1, peerSelection/2, activeThread/4, passiveThread/2]).
+-export([initThreads/8, join/1, getNeigs/2, listen/0, peerSelection/2, activeThread/4, passiveThread/2]).
 -import(lists, [append/2]).
 -import(timer, [sleep/1]).
+-import(functions,[first/1,second_list/1,second/1,shuffle/1]).
 -record(options, {c, healer, swapper, pull, mode, cycleInMs}).
 -record(state, {id, buffer, view, passivePid, activePid}).
 -record(log, {id, log}).
@@ -99,23 +100,12 @@ peerSelection(tail,[V,V1|VS]) ->
         false -> peerSelection(tail,[V1|VS])
     end.
     
-permute(view) ->
-    lists:reverse(view). %provisoire
+permute(View) ->
+    shuffle(View). %provisoire
 
 heal(view, heal) ->
     view.
 
 swap(view,swapper) ->
     view.
-
-% return first element of a list
-first([X|_]) ->
-    X.
-
-second_list([_|X]) ->
-    X.
-
-% return second element of a tuple
-second({_,Y}) ->
-    Y.
 
