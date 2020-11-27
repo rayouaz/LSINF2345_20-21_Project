@@ -1,14 +1,15 @@
 -module(node).
--export([initThreads/7, join/1, getNeigs/2, listen/0]).
+-export([initThreads/8, join/1, getNeigs/2, listen/0]).
 -import(lists, [append/2]).
 -import(timer, [sleep/1]).
--record(options, {c, healer, swapper, pull, mode, cycleInMs, passivePid, acivePid}).
+-record(options, {c, healer, swapper, pull, mode, cycleInMs}).
 -record(state, {id, buffer, view, passivePid, activePid}).
 -record(log, {id, log}).
 
-initThreads(Id, Size, Select, WithPull, H, S, Ms) ->
-    S = #state{id = Id , buffer = [], view = []},
-    O = #options{c = Size, healer = H, swapper = S, pull = WithPull, mode = Select, passivePid = -1, cycleInMs = Ms},
+initThreads(Id, Size, Select, WithPull, H, S, Ms, BootstrapPID) ->
+    io:format("hello ~n~p", [Id]),
+    S = #state{id = Id , buffer = [], view = getNeigs(BootstrapPID, Id), passivePid = -1, activePid = -1},
+    O = #options{c = Size, healer = H, swapper = S, pull = WithPull, mode = Select, cycleInMs = Ms},
     Log = #log{id = Id, log = []},
     ActiveThreadPid = spawn(node, activeThread, [S, O, Log, 0]),
     S#state{activePid = activeThreadPid},
@@ -61,12 +62,14 @@ join(BootServerPid) ->
 getNeigs(BootServerPid, NodeId) ->
   BootServerPid ! { getPeers, { self(), NodeId } },
   receive
-    { getPeersOk, Neigs } -> #state.view = Neigs
+    { getPeersOk, Neigs } ->  Neigs
   end.
 
 listen() ->
   receive
-    kill -> ok
+    kill -> ok;
+    {initThreads, {BootstrapPID, Id, Size, Select, WithPull, H, S, Ms}} -> 
+        initThreads(Id, Size, Select, WithPull, H, S, Ms, BootstrapPID)
   end.
 
 

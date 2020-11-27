@@ -1,32 +1,38 @@
 - module(project).
 - import(bootstrap_server, [listen/2]).
-- import(node, [join/2, getNeigs/3, listen/0, initThread/7]).
+- import(lists, [concat/1]).
+
+- import(node, [join/2, getNeigs/3, listen/0, initThread/8]).
 - export([launch/1]).
 
-makeNet(N, BootServerPid) -> makeNet(N, BootServerPid, [], 0, []).
+makeNet(N, BootServerPid) -> makeNet(N, BootServerPid, [], 0).
 
-makeNet(N, BootServerPid, Net, Counter, NetList) ->
+makeNet(N, BootServerPid, Net, Counter) ->
   NodePid = spawn(node, listen, []),
   NodeId = node:join(BootServerPid),
   Node = { NodeId, NodePid },
-  NetList = NetList ++ [Node],
   if
     N =/= Counter + 1 ->
-      makeNet(N, BootServerPid, Net ++ [ Node ], Counter + 1, NetList ++ [NodePid]);
+      NewNet = makeNet(N, BootServerPid, Net ++ [ Node ], Counter + 1);
     N =:= Counter + 1 ->
-      Net ++ [ Node ]
+      NewNet = Net ++ [ Node ],
+      io:format("Hi2 ~p~n", [Net])
+
   end,
-  NetList.
+  NewNet.
 
 
-
-startNet([]) -> ok;
-startNet([[ID|PID]|T]) ->
-    PID ! node:initThread(ID, 3, head, true, 2, 3, 1),    %change options here
-    startNet(T).
+startNet([], BootServerPid) -> ok;
+startNet([{ID,PID}|T], BootServerPid) ->
+    io:format("Hided~p~n", [PID]),
+    PID ! {initThreads, {BootServerPid, ID, 3, head, true, 2, 3, 1}},    %change options here ID,size,mode,pull,H,s,cycleInMs
+    startNet(T, BootServerPid).
 
 launch(N) ->
   % Creates server with an empty tree
   BootServerPid = spawn(bootstrap_server, listen, [ 0, {} ]),
+
   NetList = makeNet(N, BootServerPid),
-  startNet(NetList).
+  io:format("List ~p~n", [NetList]),
+
+  startNet(NetList, BootServerPid).
