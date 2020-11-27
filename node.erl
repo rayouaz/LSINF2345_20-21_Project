@@ -1,9 +1,5 @@
 -module(node).
-<<<<<<< HEAD
 -export([initThreads/8, join/1, getNeigs/2, listen/0, peerSelection/2, activeThread/4, passiveThread/2]).
-=======
--export([initThreads/8, join/1, getNeigs/2, listen/0, peerSelection/2]).
->>>>>>> 6f5c22fd0b492953b9d10ef4bd7d17ddc9f64fc8
 -import(lists, [append/2]).
 -import(timer, [sleep/1]).
 -import(functions,[first/1,second_list/1,second/1,shuffle/1]).
