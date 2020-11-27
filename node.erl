@@ -1,5 +1,5 @@
 -module(node).
--export([initThreads/8, join/1, getNeigs/2, listen/0, activeThread/4, passiveThread/2]).
+-export([initThreads/8, join/1, getNeigs/2, listen/0,first/1,second/1, second_list/1, peerSelection/2, activeThread/4, passiveThread/2]).
 -import(lists, [append/2]).
 -import(timer, [sleep/1]).
 -record(options, {c, healer, swapper, pull, mode, cycleInMs}).
@@ -9,7 +9,6 @@
 initThreads(Id, Size, Select, WithPull, H, S, Ms, BootstrapPID) ->
     io:format("hello ~p~n", [Id]),
     St = #state{id = Id , buffer = [], view = getNeigs(BootstrapPID, Id), passivePid = -1, activePid = -1},
-    io:format("hello2 ~n~p", [Id]),
     O = #options{c = Size, healer = H, swapper = S, pull = WithPull, mode = Select, cycleInMs = Ms},
     Log = #log{id = Id, log = []},
     ActiveThreadPid = spawn(node, activeThread, [St, O, Log, 0]),
@@ -29,7 +28,6 @@ activeThread(S, O, Log, Counter) ->
     sleep(1000),
     PassiveThreadPid = S#state.passivePid,
 
-    io:format("hello3 ~n~p", [S#state.id]),
     PassiveThreadPid = S#state.passivePid,
     %Peer = peerSelection(O#options.mode, S#state.view),
     Buffer = [[self(),0]],
@@ -41,7 +39,7 @@ activeThread(S, O, Log, Counter) ->
     %    receive 
     %        {push, Buffer} -> #state.view = selectView(S3#state.view, Buffer, O#options.healer, O#options.swapper, O#options.c)
     %    end
-    %end,
+    %end
     %S4 = S3#state{view = increaseAge(S3#state.view)},
     %PassiveThreadPid ! {updateState, S4},
     activeThread(S, O, Log, Counter+1).
@@ -88,15 +86,19 @@ selectView(view, buffer, h, swapper, c) -> view.
 increaseAge(view) -> view.
 
 
-peerSelection(Mode, [H|T]) ->
-    if Mode =:= rand ->
-        H
-    end,
-    if Mode =:= tail ->
-        H
-    end,
-    H.
+% return random node from the view
+peerSelection(rand, View) -> second(first(lists:nth(rand:uniform(length(View)),View)));
 
+% return node with highest age in the view
+peerSelection(tail,[V]) -> second(first(V));
+
+peerSelection(tail,[V,V1|VS]) ->
+    case second_list(V) >= second_list(V1) of
+        true -> peerSelection(tail,[V|VS]);
+       
+        false -> peerSelection(tail,[V1|VS])
+    end.
+    
 permute(view) ->
     lists:reverse(view). %provisoire
 
@@ -105,4 +107,15 @@ heal(view, heal) ->
 
 swap(view,swapper) ->
     view.
+
+% return first element of a list
+first([X|_]) ->
+    X.
+
+second_list([_|X]) ->
+    X.
+
+% return second element of a tuple
+second({_,Y}) ->
+    Y.
 
