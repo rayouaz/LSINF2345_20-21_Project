@@ -1,5 +1,5 @@
 -module(node).
--export([initThreads/8, join/1, getNeigs/2, listen/0]).
+-export([initThreads/8, join/1, getNeigs/2, listen/0,first/1,second/1, second_list/1, peerSelection/2]).
 -import(lists, [append/2]).
 -import(timer, [sleep/1]).
 -record(options, {c, healer, swapper, pull, mode, cycleInMs}).
@@ -82,15 +82,19 @@ selectView(view, buffer, h, swapper, c) -> view.
 increaseAge(view) -> view.
 
 
-peerSelection(Mode, View) ->
-    if Mode =:= rand ->
-        View
-    end,
-    if Mode =:= tail ->
-        View
-    end,
-    View.
+% return random node from the view
+peerSelection(rand, View) -> second(first(lists:nth(rand:uniform(length(View)),View)));
 
+% return node with highest age in the view
+peerSelection(tail,[V]) -> second(first(V));
+
+peerSelection(tail,[V,V1|VS]) ->
+    case second_list(V) >= second_list(V1) of
+        true -> peerSelection(tail,[V|VS]);
+       
+        false -> peerSelection(tail,[V1|VS])
+    end.
+    
 permute(view) ->
     lists:reverse(view). %provisoire
 
@@ -99,4 +103,15 @@ heal(view, heal) ->
 
 swap(view,swapper) ->
     view.
+
+% return first element of a list
+first([X|_]) ->
+    X.
+
+second_list([_|X]) ->
+    X.
+
+% return second element of a tuple
+second({_,Y}) ->
+    Y.
 
