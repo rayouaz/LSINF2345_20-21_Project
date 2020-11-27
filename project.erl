@@ -25,7 +25,7 @@ makeNet(N, BootServerPid, Net, Counter) ->
 startNet([], BootServerPid) -> ok;
 startNet([{ID,PID}|T], BootServerPid) ->
     io:format("Hided~p~n", [PID]),
-    PID ! {initThreads, {BootServerPid, ID, 3, head, true, 2, 3, 1}},    %change options here ID,size,mode,pull,H,s,cycleInMs
+    PID ! {initThreads, {BootServerPid, ID, 3, head, true, 2, 3, 100}},    %change options here ID,size,mode,pull,H,s,cycleInMs
     startNet(T, BootServerPid).
 
 launch(N) ->
