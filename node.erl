@@ -1,5 +1,5 @@
 -module(node).
--export([initThreads/8, join/1, getNeigs/2, listen/0, peerSelection/2, activeThread/4, passiveThread/2]).
+-export([initThreads/8, join/2, getNeigs/2, listen/0, peerSelection/2, activeThread/4, passiveThread/2]).
 -import(lists, [append/2]).
 -import(timer, [sleep/1]).
 -import(functions,[first/1,second_list/1,second/1,shuffle/1]).
@@ -9,7 +9,7 @@
 
 initThreads(Id, Size, Select, WithPull, H, S, Ms, BootstrapPID) ->
     io:format("hello ~p~n", [Id]),
-    St = #state{id = Id , buffer = [], view = getNeigs(BootstrapPID, Id), passivePid = -1, activePid = -1},
+    St = #state{id = Id , buffer = [], view = getView(getNeigs(BootstrapPID, Id), [], BootstrapPID), passivePid = -1, activePid = -1},
     O = #options{c = Size, healer = H, swapper = S, pull = WithPull, mode = Select, cycleInMs = Ms},
     Log = #log{id = Id, log = []},
     ActiveThreadPid = spawn(node, activeThread, [St, O, Log, 0]),
@@ -54,8 +54,8 @@ fillBuffer([H|T], Buffer, Count) ->
     end,
     Buffer.
 
-join(BootServerPid) ->
-  BootServerPid ! { join, self() },
+join(BootServerPid, NodePid) ->
+  BootServerPid ! { join, {self(), NodePid} },
   receive
     { joinOk, NodeId } ->
       NodeId
@@ -64,7 +64,23 @@ join(BootServerPid) ->
 getNeigs(BootServerPid, NodeId) ->
   BootServerPid ! { getPeers, { self(), NodeId } },
   receive
-    { getPeersOk, Neigs } ->  Neigs
+    { getPeersOk, Neigs } -> Neigs
+  end.
+
+getView({[]}, View, BootServerPid) -> View;
+getView({[H|T]}, View, BootServerPid) ->
+  if H =/= nil -> 
+    NewView = [[{H,getNeigPid(H, BootServerPid)}, 0]] ++ View,
+    getView({T}, NewView, BootServerPid);
+    H =:= nil -> 
+    getView({T}, View, BootServerPid)
+  end. 
+
+
+getNeigPid(NeigID, BootServerPid) ->
+  BootServerPid ! { getPeerPid, { self(), NeigID } },
+  receive
+    { getPeerPidOk, {PID} } ->  PID
   end.
 
 listen() ->
