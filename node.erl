@@ -130,7 +130,12 @@ passiveThread(state,options) ->
     end.
 
 selectView(view, buffer, h, swapper, c) -> view.
-increaseAge(view) -> view.
+
+% increase age of every element in a view
+increaseAge([],Acc) -> Acc;
+increaseAge([[{ID,Pid},Age]|VS], Acc) -> 
+    TmpAge = Age +1,
+    increaseAge(VS,Acc ++ [{ID,Pid},TmpAge]).
 
 
 % return random node from the view
