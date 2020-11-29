@@ -1,8 +1,8 @@
 -module(node).
 -export([initThreads/8, join/2, getNeigs/2, listen/0, peerSelection/2, activeThread/4, passiveThread/2, clock/1] ).
--import(lists, [append/2]).
+-import(lists, [append/2,min/1]).
 -import(timer, [sleep/1]).
--import(functions,[first/1,second_list/1,second/1,shuffle/1,getMaxAge/1,getMinAge/1,orderByAge/2]).
+-import(functions,[first/1,second_list/1,second/1,shuffle/1,getMaxAge/1,getMinAge/1,orderByAge/2,keep_freshest_entrie/3,head1/3,remove_head/2,remove/2,remove_random/2]).
 -record(options, {c, healer, swapper, pull, mode, cycleInMs}).
 -record(state, {id, buffer, view, passivePid, activePid, killed}).
 -record(log, {id, log}).
@@ -129,7 +129,8 @@ passiveThread(state,options) ->
         {updateState, {State}} -> ok
     end.
 
-selectView(view, buffer, h, swapper, c) -> view.
+selectView(View, Buffer, H, S, C) ->
+    remove_random(remove_head(head1(heal(keep_freshest_entrie(View ++ Buffer,[],[]),min([length(View)-C,H]),[]),min([length(View)-C,H]),[]),min([length(View)-C,S])),length(View)-C).
 
 % increase age of every element in a view
 increaseAge([],Acc) -> Acc;
