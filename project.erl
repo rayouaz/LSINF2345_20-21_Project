@@ -1,7 +1,7 @@
 - module(project).
 - import(bootstrap_server, [listen/3]).
 - import(lists, [concat/1]).
-
+-import(timer, [sleep/1]).
 - import(node, [join/2, getNeigs/2, listen/0, initThread/8]).
 - export([launch/1]).
 
@@ -32,3 +32,6 @@ launch(N) ->
 
   NetList = makeNet(N, BootServerPid),
   startNet(NetList, BootServerPid).
+  %KilledProcess = kill(NetList, 30),
+  %Recovered = recover(KilledProcess, Elected),
+  %cycle(60, NetList ++ Recovered).
