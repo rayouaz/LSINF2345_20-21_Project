@@ -2,7 +2,7 @@
 -export([initThreads/8, join/2, getNeigs/2, listen/0, peerSelection/2, activeThread/4, passiveThread/2, clock/1] ).
 -import(lists, [append/2]).
 -import(timer, [sleep/1]).
--import(functions,[first/1,second_list/1,second/1,shuffle/1]).
+-import(functions,[first/1,second_list/1,second/1,shuffle/1,getMaxAge/1,getMinAge/1,orderByAge/2]).
 -record(options, {c, healer, swapper, pull, mode, cycleInMs}).
 -record(state, {id, buffer, view, passivePid, activePid, killed}).
 -record(log, {id, log}).
@@ -153,8 +153,11 @@ peerSelection(tail,[V,V1|VS]) ->
 permute(View) ->
     shuffle(View). %provisoire
 
-heal(view, heal) ->
-    view.
+% move H oldest items to the end of the view
+heal(View,0,Acc) -> 
+    View ++ [orderByAge(Acc,[])];
+heal([V|VS], H, Acc) ->
+    heal(lists:filter(fun (Elem) -> not lists:member(Elem, [getMaxAge([V|VS])]) end, [V|VS] ), H-1, Acc ++ [getMaxAge([V|VS])]).
 
 swap(view,swapper) ->
     view.
