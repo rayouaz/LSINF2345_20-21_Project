@@ -44,29 +44,37 @@ listen(ActiveThreadPid) ->
 activeThread(S, O, Log, Counter) -> 
   receive 
     {cycle} -> 
-      if (S#state.killed =/= true) ->
-        io:format("Id: ~p counter: ~p  view: ~p~n", [S#state.id, Counter, S#state.view]),
-        %Log = Log ++[Counter,S#state.view],
-        %if (S#state.passivePid =/= -1) ->
-          %Peer = peerSelection(O#options.mode, S#state.view),
-          %Buffer = [[self(),0]],
-          %S#state{view = permute(S#state.view)},
-          %S#state{view = heal(S#state.view,O#options.healer)},
-          %Buffer = fillBuffer(S#state.view, Buffer, (O#options.c/2) - 1)
-          %Peer ! {push, self(), Buffer}, 
+      if 
+        (S#state.killed =/= true) ->
+          io:format("Id: ~p counter: ~p  view: ~p~n", [S#state.id, Counter, S#state.view]),
+          %Log = Log ++[C ounter,S#state.view],
+        if 
+          (S#state.passivePid =/= -1) ->
+          Peer = peerSelection(O#options.mode, S#state.view),
+          Buffer = [[{S#state.id,self()},0]],
+          S2 = S#state{view = permute(S#state.view)},
+          %S3 = S2#state{view = heal(S2#state.view,O#options.healer, [])},
+          Buffer = fillBuffer(S2#state.view, Buffer, ceil((O#options.c/2)) - 1),
+          Peer ! {push, self(), Buffer}, 
           %if (O#options.pull =:= true) -> 
           %    receive 
           %        {push, Buffer} -> #state.view = selectView(S3#state.view, Buffer, O#options.healer, O#options.swapper, O#options.c)
           %    end
           %end
-          %S#state{view = increaseAge(S#state.view)},
-          %S#state.passivePid ! {updateState, S}
-        %end,
-        activeThread(S, O, Log, Counter+1)
+          S4 = S2#state{view = increaseAge(S2#state.view, [])};
+          %S5 = S4#state.passivePid ! {updateState, S4};
+          true -> 
+            wait
+
+        end,
+      activeThread(S, O, Log, Counter+1);
+      true -> 
+        io:format("killed"),
+        killed
       end;
     {ping, PassiveThreadPid} ->
-       S#state{passivePid = PassiveThreadPid},
-       activeThread(S, O, Log, Counter);
+       S2 = S#state{passivePid = PassiveThreadPid},
+       activeThread(S2, O, Log, Counter);
     {kill} -> 
       S#state{killed = true},
       io:format("~p Killed", [S#state.id]),
@@ -80,13 +88,13 @@ activeThread(S, O, Log, Counter) ->
     end.
 
 
-
+fillBuffer([], Buffer, Count) -> ok;
 fillBuffer([H|T], Buffer, Count) ->
     if 
       (Count == 0) -> ok;
       (Count > 0) ->
-        Buffer = Buffer + H,
-        fillBuffer(T, Buffer, Count-1)
+        NewBuffer = Buffer ++ [H],
+        fillBuffer(T, NewBuffer, Count-1)
     end,
     Buffer.
 
