@@ -42,7 +42,8 @@ orderByAge([],Acc) -> Acc;
 orderByAge([V|VS], Acc) ->
     orderByAge(lists:filter(fun (Elem) -> not lists:member(Elem, [getMinAge([V|VS])]) end, [V|VS] ), Acc ++ [getMinAge([V|VS])]).
 
-% keep the freshest entries of a view after a pullkeep_freshest_entrie([[{ID,Pid},Age]],[], Result) -> Result ++ [[{ID,Pid},Age]];
+% keep the freshest entries of a view after a pull
+keep_freshest_entrie([[{ID,Pid},Age]],[], Result) -> Result ++ [[{ID,Pid},Age]];
 keep_freshest_entrie([[{ID,Pid},Age]],Acc, Result) -> keep_freshest_entrie(Acc, [], Result ++ [[{ID,Pid},Age]]);
 keep_freshest_entrie([[{ID,Pid},Age], [{ID1,Pid1},Age1]|VS], Acc, Result) ->
     if
