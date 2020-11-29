@@ -134,8 +134,7 @@ selectView(view, buffer, h, swapper, c) -> view.
 % increase age of every element in a view
 increaseAge([],Acc) -> Acc;
 increaseAge([[{ID,Pid},Age]|VS], Acc) -> 
-    TmpAge = Age +1,
-    increaseAge(VS,Acc ++ [{ID,Pid},TmpAge]).
+    increaseAge(VS,Acc ++ [{ID,Pid},Age +1]).
 
 
 % return random node from the view
