@@ -37,12 +37,16 @@ listen() ->
 listen(ActiveThreadPid, PassiveThreadPid) ->
   receive
     {kill} -> ActiveThreadPid ! {kill};
-    {recover, {electedPeer}} -> ActiveThreadPid ! {recover, {electedPeer}};
+    {recover, {electedPeer}} -> io:format("xoxo"), ActiveThreadPid ! {recover, {electedPeer}};
     {cycle} -> ActiveThreadPid ! {cycle};
     {push, {From, PeerBuffer}} -> PassiveThreadPid ! {push, {From, PeerBuffer}};
     {pull, {From, PeerBuffer}} -> ActiveThreadPid ! {pull, {From, PeerBuffer}};
-    {askPassive} -> io:format("hxxxi"), ActiveThreadPid ! {ping, {PassiveThreadPid}}
-
+    {askPassive} -> ActiveThreadPid ! {ping, {PassiveThreadPid}};
+    {updateState, {State, To}} ->
+      To ! {updateState, {State}},
+      receive
+        {updated} ->  ok
+      end
   end,
   listen(ActiveThreadPid, PassiveThreadPid).
 
@@ -59,7 +63,7 @@ activeThread(S, O, Log, Counter) ->
             Peer = peerSelection(O#options.mode, S#state.view),
             Buffer = [[{S#state.id,self()},0]],
             S2 = S#state{view = permute(S#state.view)},
-            S3 = S2#state{view = heal(S2#state.view,O#options.healer, [])},
+            S3 = S2,%#state{view = heal(S2#state.view,O#options.healer, [])},
             Buffer = fillBuffer(S3#state.view, Buffer, ceil((O#options.c/2)) - 1),
             Peer ! {push, {self(), Buffer}}, 
             if
@@ -73,7 +77,8 @@ activeThread(S, O, Log, Counter) ->
               (O#options.pull =/= true) -> 
                 SF = S3#state{view = increaseAge(S3#state.view, [])}
             end,
-            SF#state.passivePid ! {updateState, {SF}},
+            SF#state.master ! {updateState, {SF, SF#state.passivePid}},
+
             activeThread(SF, O, Log, Counter+1);
           true -> 
             io:format("~p ~p Wait passivePid~n", [S#state.id, S#state.passivePid]),
@@ -81,29 +86,34 @@ activeThread(S, O, Log, Counter) ->
             activeThread(S, O, Log, Counter)
         end;
       (S#state.killed =:= true) -> 
-        io:format("~p killed~n", [S#state.id]),
+        S#state.master ! {updateState, {S, S#state.passivePid}},
+
         activeThread(S, O, Log, Counter)
       end;
 
     {ping, PassiveThreadPid} ->
        S2 = S#state{passivePid = PassiveThreadPid},
        io:format("~p OK passivePid ~p ~n", [S#state.id, PassiveThreadPid]),
-       PassiveThreadPid ! {updateState, {S2}},
+       S2#state.master ! {updateState, {S2, S2#state.passivePid}},
        activeThread(S2, O, Log, Counter);
 
     {kill} -> 
-      S#state{killed = true},
-      io:format("~p Killed", [S#state.id]),
-      activeThread(S, O, Log, Counter);
+      S2 = S#state{killed = true},
+      S2#state.master ! {updateState, {S2, S2#state.passivePid}},
+      io:format("~p killed ~n", [S#state.id]),
+      activeThread(S2, O, Log, Counter);
 
     {recover, {electedPeer}} -> 
+      io:format("~p recovered ~n", [S#state.id]),
       NewView = [[electedPeer,0]],
-      S#state{view = NewView},
-      S#state.passivePid ! {updateState, S},
-      activeThread(S, O, Log, Counter);
+      S2 = S#state{view = NewView},
+      S2#state.master ! {updateState, S2},
+      activeThread(S2, O, Log, Counter);
 
     {updateState, {UpdatedState}} ->
+      UpdatedState#state.master ! {updated},
       activeThread(UpdatedState, O, Log, Counter)
+
     end.
 
 
@@ -111,16 +121,18 @@ passiveThread(S,O) ->
     receive 
         {updateState, {State}} -> 
           S2 = State,
+          S2#state.master ! {updated},
           passiveThread(S2,O);
+
         {push, {From, PeerBuffer}} -> 
           Buffer = [[{S#state.id,self()},0]],
           S2 = S#state{view = permute(S#state.view)},
-          S3 = S2#state{view = heal(S2#state.view,O#options.healer, [])},
+          S3 = S2,%#state{view = heal(S2#state.view,O#options.healer, [])},
           Buffer = fillBuffer(S3#state.view, Buffer, ceil((O#options.c/2)) - 1),
           From ! {pull, {self(), Buffer}}, 
           S4 = S3,%#state{view = selectView(S3#state.view, PeerBuffer, O#options.healer, O#options.swapper, O#options.c)},
           S5 = S4#state{view = increaseAge(S4#state.view, [])},
-          S5#state.activePid ! {updateState, {S5}},
+          S5#state.master ! {updateState, {S5, S5#state.activePid}},
           passiveThread(S5,O)
     end.
 
