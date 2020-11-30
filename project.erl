@@ -34,11 +34,12 @@ launch(N) ->
   startNet(NetList, BootServerPid, CycleInMs),
   sleep(CycleInMs*10),
   KilledProcess = kill(NetList, [], ceil(N*0.6)),
-  sleep(CycleInMs*10).
-  %recover(KilledProcess, first(reverse(NetList))),
-  %sleep(CycleInMs*10),
-  %kill(NetList, [], N).
+  sleep(CycleInMs*10),
+  recover(KilledProcess, first(reverse(NetList))),
+  sleep(CycleInMs*10),
+  kill(NetList, [], N).
 
+kill([], Killed, 0) -> ok;
 kill([{ID,PID}|T], Killed, 0) -> Killed;
 kill([{ID,PID}|T], Killed, Deaths) ->
   PID ! {kill},
@@ -48,7 +49,7 @@ kill([{ID,PID}|T], Killed, Deaths) ->
 recover([], Elected) -> ok;
 recover([{ID,PID}|T], Elected) -> 
   io:format("recover ~p ~n", [PID]),
-  PID ! {recover, {Elected}},
+  PID ! {recover, Elected},
   recover(T,Elected).
 
 first([X|_]) ->

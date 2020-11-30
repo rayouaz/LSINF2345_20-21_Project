@@ -37,7 +37,7 @@ listen() ->
 listen(ActiveThreadPid, PassiveThreadPid) ->
   receive
     {kill} -> ActiveThreadPid ! {kill};
-    {recover, {electedPeer}} -> io:format("xoxo"), ActiveThreadPid ! {recover, {electedPeer}};
+    {recover, Elected} ->  ActiveThreadPid ! {recover, Elected};
     {cycle} -> ActiveThreadPid ! {cycle};
     {push, {From, PeerBuffer}} -> PassiveThreadPid ! {push, {From, PeerBuffer}};
     {pull, {From, PeerBuffer}} -> ActiveThreadPid ! {pull, {From, PeerBuffer}};
@@ -103,12 +103,14 @@ activeThread(S, O, Log, Counter) ->
       io:format("~p killed ~n", [S#state.id]),
       activeThread(S2, O, Log, Counter);
 
-    {recover, {electedPeer}} -> 
-      io:format("~p recovered ~n", [S#state.id]),
-      NewView = [[electedPeer,0]],
+    {recover, Elected} -> 
+      io:format("~p recovereEEEd ~n", [S#state.id]),
+      NewView = [[Elected,0]],
       S2 = S#state{view = NewView},
-      S2#state.master ! {updateState, S2},
-      activeThread(S2, O, Log, Counter);
+      S3 = S2#state{killed = false},
+      io:format("~p new view ~n", [S3#state.view]),
+      S3#state.master ! {updateState, {S3, S3#state.passivePid}},
+      activeThread(S3, O, Log, Counter);
 
     {updateState, {UpdatedState}} ->
       UpdatedState#state.master ! {updated},
