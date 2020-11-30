@@ -1,5 +1,5 @@
 -module(functions).
--export([first/1,second_list/1,second/1, shuffle/1,getMaxAge/1,getMinAge/1,orderByAge/2,keep_freshest_entrie/3,head1/3,remove_head/2,remove/2,remove_random/2]).
+-export([first/1,second_list/1,second/1, shuffle/1,getMaxAge/1,getMinAge/1,orderByAge/2,keep_freshest_entrie/3,head1/3,remove_head/2,remove/2,remove_random/2,lengthh/1]).
 
 % return first element of a list
 first([X|_]) ->
@@ -7,6 +7,9 @@ first([X|_]) ->
 
 second_list([_|X]) ->
     X.
+
+lengthh([]) -> 0;
+lengthh([X|XS]) -> 1 + lengthh(XS).
 
 % return second element of a tuple
 second({_,Y}) ->
@@ -59,9 +62,11 @@ keep_freshest_entrie([[{ID,Pid},Age], [{ID1,Pid1},Age1]|VS], Acc, Result) ->
             keep_freshest_entrie([[{ID,Pid},Age]|VS], Acc ++ [[{ID1,Pid1},Age1]], Result)
     end.
 
-head1(_,0,Result) -> Result;
-head1([V|Vs],Counter,Result) ->
-    head1(Vs,Counter-1,Result ++ [V]).
+head1([V|Vs],H,Result) -> 
+    case lengthh([V|Vs]) =:= H of
+        true -> Result;
+        false -> head1(Vs,H,Result ++ [V])
+    end.
 
 remove_head(V,0) -> V;
 remove_head([V,V1|VS],S) ->
