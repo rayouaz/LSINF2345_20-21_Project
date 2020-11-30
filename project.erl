@@ -23,7 +23,7 @@ makeNet(N, BootServerPid, Net, Counter) ->
 
 startNet([], BootServerPid) -> ok;
 startNet([{ID,PID}|T], BootServerPid) ->
-    PID ! {initThreads, {BootServerPid, ID, 3, rand, true, 2, 3, 100}},    %change options here ID,size,mode,pull,H,s,cycleInMs
+    PID ! {initThreads, {BootServerPid, ID, 7, rand, true, 2, 3, 1000}},    %change options here ID,size,mode,pull,H,s,cycleInMs
     startNet(T, BootServerPid).
 
 launch(N) ->
