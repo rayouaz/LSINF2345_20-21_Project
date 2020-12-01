@@ -26,15 +26,23 @@ startNet([{ID,PID}|T], BootServerPid, CycleInMs) ->
     PID ! {initThreads, {BootServerPid, ID, 7, rand, true, 2, 3, CycleInMs}},    %change options here ID,size,mode,pull,H,s,cycleInMs
     startNet(T, BootServerPid, CycleInMs).
 
+cycle(NetList,0,CycleInMs,NetList) -> ok;
+cycle([{ID,PID}|T], N, CycleInMs, NetList) ->
+  PID ! {cycle},
+  cycle(T, N, CycleInMs, NetList);
+cycle([], N, CycleInMs, NetList) ->
+  sleep(CycleInMs),
+  cycle(NetList, N-1, CycleInMs, NetList).
+
 launch(N) ->
   % Creates server with an empty tree
   BootServerPid = spawn(bootstrap_server, listen, [ 0, {}, [] ]),
   NetList = makeNet(N, BootServerPid),
   CycleInMs = 1000,
   startNet(NetList, BootServerPid, CycleInMs),
-  sleep(CycleInMs*10),
-  KilledProcess = kill(NetList, [], ceil(N*0.6)),
-  sleep(CycleInMs*10).
+  cycle(NetList, 10, CycleInMs, NetList),
+  KilledProcess = kill(NetList, [], ceil(N*0.3)),
+  cycle(NetList, 10, CycleInMs, NetList).
   %recover(KilledProcess, first(reverse(NetList))),
   %sleep(CycleInMs*10),
   %kill(NetList, [], N).

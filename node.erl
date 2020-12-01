@@ -1,5 +1,5 @@
 -module(node).
--export([initThreads/8, join/2, getNeigs/2, listen/0, peerSelection/2, activeThread/4, passiveThread/2, clock/2] ).
+-export([initThreads/8, join/2, getNeigs/2, listen/0, peerSelection/2, activeThread/4, passiveThread/2] ).
 -import(lists, [append/2,min/1]).
 -import(timer, [sleep/1]).
 -import(functions,[first/1,second_list/1,second/1,shuffle/1,getMaxAge/1,getMinAge/1,orderByAge/2,keep_freshest_entrie/3,head1/3,remove_head/2,remove/2,remove_random/2,lengthh/1]).
@@ -19,13 +19,8 @@ initThreads(Id, Size, Select, WithPull, H, S, Ms, BootstrapPID) ->
     PassiveThreadPid !{updateState, {St3}},
     ActiveThreadPid ! {updateState, {St3}},
     ActiveThreadPid ! {ping, PassiveThreadPid},
-    spawn(node, clock, [self(), Ms]),
     listen(ActiveThreadPid, PassiveThreadPid).
 
-clock(PeerPid, CycleInMs) ->
-  sleep(CycleInMs),
-  PeerPid ! {cycle},
-  clock(PeerPid, CycleInMs).
 
 listen() ->
   receive
