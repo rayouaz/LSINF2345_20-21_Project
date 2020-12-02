@@ -51,7 +51,7 @@ activeThread(S, O, Log, Counter) ->
     {cycle} -> 
       if 
         (S#state.killed =/= true) ->
-          io:format("Id: ~p counter: ~p  view: ~p~n", [S#state.id, Counter, S#state.view]),
+          io:format("log:: ~p ~p ~p~n", [S#state.id, Counter, S#state.view]),
           %Log = Log ++[C ounter,S#state.view],
         if 
           (S#state.passivePid =/= -1) ->
