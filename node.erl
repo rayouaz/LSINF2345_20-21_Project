@@ -124,7 +124,7 @@ passiveThread(S,O) ->
         {push, {From, PeerBuffer}} -> 
           Buffer = [[{S#state.id,self()},0]],
           S2 = S#state{view = permute(S#state.view)},
-          S3 = S2,%#state{view = heal(S2#state.view,O#options.healer, [])},
+          S3 = S2,%#state{view = heal(S2#state.view,O#options.healer, [],S2#state.view)},
           Buffer = fillBuffer(S3#state.view, Buffer, ceil((O#options.c/2)) - 1),
           From ! {pull, {self(), Buffer}}, 
           S4 = S3,%#state{view = selectView(S3#state.view, PeerBuffer, O#options.healer, O#options.swapper, O#options.c)},
