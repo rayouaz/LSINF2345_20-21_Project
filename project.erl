@@ -39,22 +39,28 @@ launch(N) ->
   BootServerPid = spawn(bootstrap_server, listen, [ 0, {}, [] ]),
   NetList = makeNet(N, BootServerPid),
   CycleInMs = 1000,
-  startNet(NetList, BootServerPid, CycleInMs),
-<<<<<<< HEAD
-  cycle(NetList, 10, CycleInMs, NetList),
-  KilledProcess = kill(NetList, [], ceil(N*0.3)),
-  cycle(NetList, 10, CycleInMs, NetList).
-  %recover(KilledProcess, first(reverse(NetList))),
-  %sleep(CycleInMs*10),
-  %kill(NetList, [], N).
-=======
-  sleep(CycleInMs*10),
+  FourtyPercentLen = floor(length(NetList)*0.4)-1,
+  TwentyPercentLen = floor(length(NetList)*0.2),
+  PhaseOne = getSublist(NetList, 0, FourtyPercentLen,0,[]),
+  PhaseTwo = getSublist(NetList, FourtyPercentLen, TwentyPercentLen, 0, []),
+  PhaseThree = getSublist(NetList, FourtyPercentLen+TwentyPercentLen, FourtyPercentLen+(TwentyPercentLen*2), 0, []),
+  PhaseFour = getSublist(NetList, FourtyPercentLen+(TwentyPercentLen*2), FourtyPercentLen+(TwentyPercentLen*3)+1, 0, []),
+  io:format("hi ~p", [PhaseOne]),
+  startNet(PhaseOne, BootServerPid, CycleInMs),
+  cycle(PhaseOne, 30, CycleInMs, NetList),
+  startNet(PhaseTwo, BootServerPid, CycleInMs),
+  cycle(PhaseOne++PhaseTwo, 30, CycleInMs, NetList),
+  startNet(PhaseThree, BootServerPid, CycleInMs),
+  cycle(PhaseOne++PhaseTwo++PhaseThree, 30, CycleInMs, NetList),
+  startNet(PhaseFour, BootServerPid, CycleInMs),
+  cycle(NetList, 30, CycleInMs, NetList),
   KilledProcess = kill(NetList, [], ceil(N*0.6)),
-  sleep(CycleInMs*10),
-  recover(KilledProcess, first(reverse(NetList))),
-  sleep(CycleInMs*10),
+  cycle(NetList, 30 , CycleInMs, NetList),
+  RecoverList = getSublist(KilledProcess, 0,floor(length(KilledProcess)*0.6),0 , []),
+  recover(RecoverList, first(reverse(NetList))),
+  cycle(NetList, 30 , CycleInMs, NetList),
   kill(NetList, [], N).
->>>>>>> 8b548ad6a1da0b4a3924226b91947a85b60e0b48
+
 
 kill([], Killed, 0) -> ok;
 kill([{ID,PID}|T], Killed, 0) -> Killed;
@@ -71,3 +77,15 @@ recover([{ID,PID}|T], Elected) ->
 
 first([X|_]) ->
     X.
+
+getSublist([], Start,End, Count, ReturnList) -> ReturnList;
+getSublist([H|T], Start,End, Count, ReturnList) ->
+  if 
+    Count =:= End ->
+      ReturnList;
+    Count >= Start ->
+      NewReturnList = ReturnList++[H],
+      getSublist(T, Start,End, Count+1, NewReturnList) ;
+    Count < Start ->
+      getSublist(T, Start,End, Count+1, ReturnList)
+  end.
