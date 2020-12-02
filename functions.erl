@@ -1,5 +1,5 @@
 -module(functions).
--export([first/1,second_list/1,second/1, shuffle/1,getMaxAge/1,getMinAge/1,orderByAge/2,keep_freshest_entrie/3,head1/3,remove_head/2,remove/2,remove_random/2,lengthh/1]).
+-export([first/1,second_list/1,second/1, shuffle/1,getMaxAge/1,getMinAge/1,orderByAge/2,keep_freshest_entrie/3,head1/4,remove_head/3,remove/2,remove_random/2,lengthh/1,head2/3,remove_head1/2,remove_random1/2]).
 
 % return first element of a list
 first([X|_]) ->
@@ -62,19 +62,39 @@ keep_freshest_entrie([[{ID,Pid},Age], [{ID1,Pid1},Age1]|VS], Acc, Result) ->
             keep_freshest_entrie([[{ID,Pid},Age]|VS], Acc ++ [[{ID1,Pid1},Age1]], Result)
     end.
 
-head1([V|Vs],H,Result) -> 
-    case lengthh([V|Vs]) =:= H of
-        true -> Result;
-        false -> head1(Vs,H,Result ++ [V])
+head2(_,0,Result) -> Result;
+head2([],_,Result) -> Result;
+head2([V|VS],HC,Result) ->
+    head2(VS,HC-1,Result ++ [V]).
+% remove H last elements
+head1([V|Vs],H,Result,C) -> 
+    case lengthh([V|Vs]) < lists:min([lengthh([V|Vs])-C,H]) of
+        true -> [V|Vs];
+        false -> 
+            case (H > lengthh([V|Vs]) -C) of
+                true -> head2([V|Vs],lengthh([V|Vs]) -(lengthh([V|Vs])-C),Result);
+                false -> head2([V|Vs],lengthh([V|Vs])-H,Result)
+            end
     end.
 
-remove_head(V,0) -> V;
-remove_head([V,V1|VS],S) ->
-    remove_head([V1|VS],S-1).
+remove_head1(VS,0) ->VS;
+remove_head1([V|VS],Counter) ->
+    remove_head1(VS,Counter-1).
+
+remove_head([V|VS],S,C) ->
+    case lengthh([V|VS]) < lists:min([S,lengthh([V|VS])-C]) of
+        true -> [V|VS];
+        false -> remove_head1([V|VS],lists:min([S,lengthh([V|VS])-C]))
+    end.
 
 remove(X, L) ->
     [Y || Y <- L, Y =/= X].
 
-remove_random(V,0) -> V;
-remove_random(V,Counter) ->
-    remove_random(remove(lists:nth(rand:uniform(length(V)), V),V),Counter-1).
+remove_random1(V,0) -> V;
+remove_random1(V,C) -> 
+    remove_random1(remove(lists:nth(rand:uniform(lengthh(V)), V),V),C-1).
+remove_random(V,C) ->
+    case lengthh(V) < C of
+        true -> V;
+        false -> remove_random1(V,lengthh(V)-(lengthh(V) -C))
+    end.
