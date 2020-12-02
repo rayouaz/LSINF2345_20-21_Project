@@ -1,6 +1,6 @@
 - module(project).
 - import(bootstrap_server, [listen/3]).
-- import(lists, [concat/1]).
+- import(lists, [concat/1, reverse/1]).
 -import(timer, [sleep/1]).
 - import(node, [join/2, getNeigs/2, listen/0, initThread/8]).
 - export([launch/1]).
@@ -21,17 +21,71 @@ makeNet(N, BootServerPid, Net, Counter) ->
   NewNet.
 
 
-startNet([], BootServerPid) -> ok;
-startNet([{ID,PID}|T], BootServerPid) ->
-    PID ! {initThreads, {BootServerPid, ID, 7, rand, true, 2, 3, 1000}},    %change options here ID,size,mode,pull,H,s,cycleInMs
-    startNet(T, BootServerPid).
+startNet([], BootServerPid, CycleInMs) -> ok;
+startNet([{ID,PID}|T], BootServerPid, CycleInMs) ->
+    PID ! {initThreads, {BootServerPid, ID, 7, rand, true, 2, 3, CycleInMs}},    %change options here ID,size,mode,pull,H,s,cycleInMs
+    startNet(T, BootServerPid, CycleInMs).
+
+cycle(NetList,0,CycleInMs,NetList) -> ok;
+cycle([{ID,PID}|T], N, CycleInMs, NetList) ->
+  PID ! {cycle},
+  cycle(T, N, CycleInMs, NetList);
+cycle([], N, CycleInMs, NetList) ->
+  sleep(CycleInMs),
+  cycle(NetList, N-1, CycleInMs, NetList).
 
 launch(N) ->
   % Creates server with an empty tree
   BootServerPid = spawn(bootstrap_server, listen, [ 0, {}, [] ]),
-
   NetList = makeNet(N, BootServerPid),
-  startNet(NetList, BootServerPid).
-  %KilledProcess = kill(NetList, 30),
-  %Recovered = recover(KilledProcess, Elected),
-  %cycle(60, NetList ++ Recovered).
+  CycleInMs = 1000,
+  FourtyPercentLen = floor(length(NetList)*0.4)-1,
+  TwentyPercentLen = floor(length(NetList)*0.2),
+  PhaseOne = getSublist(NetList, 0, FourtyPercentLen,0,[]),
+  PhaseTwo = getSublist(NetList, FourtyPercentLen, TwentyPercentLen, 0, []),
+  PhaseThree = getSublist(NetList, FourtyPercentLen+TwentyPercentLen, FourtyPercentLen+(TwentyPercentLen*2), 0, []),
+  PhaseFour = getSublist(NetList, FourtyPercentLen+(TwentyPercentLen*2), FourtyPercentLen+(TwentyPercentLen*3)+1, 0, []),
+  io:format("hi ~p", [PhaseOne]),
+  startNet(PhaseOne, BootServerPid, CycleInMs),
+  cycle(PhaseOne, 30, CycleInMs, NetList),
+  startNet(PhaseTwo, BootServerPid, CycleInMs),
+  cycle(PhaseOne++PhaseTwo, 30, CycleInMs, NetList),
+  startNet(PhaseThree, BootServerPid, CycleInMs),
+  cycle(PhaseOne++PhaseTwo++PhaseThree, 30, CycleInMs, NetList),
+  startNet(PhaseFour, BootServerPid, CycleInMs),
+  cycle(NetList, 30, CycleInMs, NetList),
+  KilledProcess = kill(NetList, [], ceil(N*0.6)),
+  cycle(NetList, 30 , CycleInMs, NetList),
+  RecoverList = getSublist(KilledProcess, 0,floor(length(KilledProcess)*0.6),0 , []),
+  recover(RecoverList, first(reverse(NetList))),
+  cycle(NetList, 30 , CycleInMs, NetList),
+  kill(NetList, [], N).
+
+
+kill([], Killed, 0) -> ok;
+kill([{ID,PID}|T], Killed, 0) -> Killed;
+kill([{ID,PID}|T], Killed, Deaths) ->
+  PID ! {kill},
+  Killed2 = Killed ++ [{ID,PID}],
+  kill(T,Killed2,Deaths-1).
+  
+recover([], Elected) -> ok;
+recover([{ID,PID}|T], Elected) -> 
+  io:format("recover ~p ~n", [PID]),
+  PID ! {recover, Elected},
+  recover(T,Elected).
+
+first([X|_]) ->
+    X.
+
+getSublist([], Start,End, Count, ReturnList) -> ReturnList;
+getSublist([H|T], Start,End, Count, ReturnList) ->
+  if 
+    Count =:= End ->
+      ReturnList;
+    Count >= Start ->
+      NewReturnList = ReturnList++[H],
+      getSublist(T, Start,End, Count+1, NewReturnList) ;
+    Count < Start ->
+      getSublist(T, Start,End, Count+1, ReturnList)
+  end.
