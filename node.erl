@@ -1,5 +1,5 @@
 -module(node).
--export([initThreads/8, join/2, getNeigs/2, listen/0, peerSelection/2, activeThread/4, passiveThread/2] ).
+-export([initThreads/9, join/2, getNeigs/2, listen/0, peerSelection/2, activeThread/4, passiveThread/2] ).
 -import(lists, [append/2,min/1]).
 -import(timer, [sleep/1]).
 -import(functions,[first/1,second_list/1,second/1,shuffle/1,getMaxAge/1,getMinAge/1,orderByAge/2,keep_freshest_entrie/3,head1/3,remove_head/2,remove/2,remove_random/2,lengthh/1]).
@@ -7,26 +7,25 @@
 -record(state, {id, master, buffer, view, passivePid, activePid, killed}).
 -record(log, {id, log}).
 
-initThreads(Id, Size, Select, WithPull, H, S, Ms, BootstrapPID) ->
+initThreads(Id, Size, Select, WithPull, H, S, Ms, BootstrapPID, Counter) ->
     io:format("hello ~p~n", [Id]),
     St = #state{id = Id , master = self(), buffer = [], view = getView(getNeigs(BootstrapPID, Id), [], BootstrapPID), passivePid = -1, activePid = -1, killed = false},
     O = #options{c = Size, healer = H, swapper = S, pull = WithPull, mode = Select, cycleInMs = Ms},
     Log = #log{id = Id, log = []},
-    ActiveThreadPid = spawn(node, activeThread, [St, O, Log, 0]),
+    ActiveThreadPid = spawn(node, activeThread, [St, O, Log, Counter]),
     St2 = St#state{activePid = ActiveThreadPid},
     PassiveThreadPid = spawn(node, passiveThread, [St2,O]),
     St3 = St2#state{passivePid = PassiveThreadPid},
     PassiveThreadPid !{updateState, {St3}},
     ActiveThreadPid ! {updateState, {St3}},
-    ActiveThreadPid ! {ping, PassiveThreadPid},
     listen(ActiveThreadPid, PassiveThreadPid).
 
 
 listen() ->
   receive
     kill -> ok;
-    {initThreads, {BootstrapPID, Id, Size, Select, WithPull, H, S, Ms}} -> 
-        initThreads(Id, Size, Select, WithPull, H, S, Ms, BootstrapPID)
+    {initThreads, {BootstrapPID, Id, Size, Select, WithPull, H, S, Ms, Counter}} -> 
+        initThreads(Id, Size, Select, WithPull, H, S, Ms, BootstrapPID,Counter)
   end.
 
 listen(ActiveThreadPid, PassiveThreadPid) ->
@@ -37,11 +36,11 @@ listen(ActiveThreadPid, PassiveThreadPid) ->
     {push, {From, PeerBuffer}} -> PassiveThreadPid ! {push, {From, PeerBuffer}};
     {pull, {From, PeerBuffer}} -> ActiveThreadPid ! {pull, {From, PeerBuffer}};
     {askPassive} -> ActiveThreadPid ! {ping, {PassiveThreadPid}};
-    {updateState, {State, To}} ->
+    {updateState, {State, To}} -> 
       To ! {updateState, {State}},
       receive
         {updated} ->  ok
-      end
+      end 
   end,
   listen(ActiveThreadPid, PassiveThreadPid).
 
@@ -78,19 +77,13 @@ activeThread(S, O, Log, Counter) ->
           true -> 
             io:format("~p ~p Wait passivePid~n", [S#state.id, S#state.passivePid]),
             S#state.master ! {askPassive},
-            activeThread(S, O, Log, Counter)
+            activeThread(S, O, Log, Counter+1)
         end;
       (S#state.killed =:= true) -> 
         S#state.master ! {updateState, {S, S#state.passivePid}},
 
-        activeThread(S, O, Log, Counter)
+        activeThread(S, O, Log, Counter+1)
       end;
-
-    {ping, PassiveThreadPid} ->
-       S2 = S#state{passivePid = PassiveThreadPid},
-       io:format("~p OK passivePid ~p ~n", [S#state.id, PassiveThreadPid]),
-       S2#state.master ! {updateState, {S2, S2#state.passivePid}},
-       activeThread(S2, O, Log, Counter);
 
     {kill} -> 
       S2 = S#state{killed = true},
