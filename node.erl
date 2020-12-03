@@ -63,7 +63,7 @@ activeThread(S, O, Log, Counter) ->
             (O#options.pull =:= true) -> 
               receive 
                   {pull, {From, PeerBuffer}} -> 
-                    S4 = S3%#state{view = selectView(S3#state.view, PeerBuffer, O#options.healer, O#options.swapper, O#options.c)}
+                    S4 = S3#state{view = selectView(S3#state.view, PeerBuffer, O#options.healer, O#options.swapper, O#options.c)}
               after
                       100 -> S4 = S3
               end,
@@ -113,7 +113,7 @@ passiveThread(S,O) ->
           S3 = S2#state{view = heal(S2#state.view,O#options.healer, [],S2#state.view)},
           Buffer = fillBuffer(S3#state.view, Buffer, ceil((O#options.c/2)) - 1),
           From ! {pull, {S3#state.master, Buffer}}, 
-          S4 = S3,%#state{view = selectView(S3#state.view, PeerBuffer, O#options.healer, O#options.swapper, O#options.c)},
+          S4 = S3#state{view = selectView(S3#state.view, PeerBuffer, O#options.healer, O#options.swapper, O#options.c)},
           S5 = S4#state{view = increaseAge(S4#state.view, [])},
           S5#state.master ! {updateState, {S5, S5#state.activePid}},
           passiveThread(S5,O)
