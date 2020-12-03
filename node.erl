@@ -1,5 +1,5 @@
 -module(node).
--export([initThreads/8, join/2, getNeigs/2, listen/0, peerSelection/2, activeThread/4, passiveThread/2] ).
+-export([initThreads/8, join/2, getNeigs/2, listen/0, peerSelection/2, activeThread/4, passiveThread/2,heal/4,selectView/5]).
 -import(lists, [append/2,min/1]).
 -import(timer, [sleep/1]).
 -import(functions,[first/1,second_list/1,second/1,shuffle/1,getMaxAge/1,getMinAge/1,orderByAge/2,keep_freshest_entrie/3,head1/4,remove_head/3,remove/2,remove_random/2,lengthh/1,head2/3,remove_head1/2,remove_random1/2]).
@@ -58,14 +58,14 @@ activeThread(S, O, Log, Counter) ->
             Peer = peerSelection(O#options.mode, S#state.view),
             Buffer = [[{S#state.id,self()},0]],
             S2 = S#state{view = permute(S#state.view)},
-            S3 = S2,%#state{view = heal(S2#state.view,O#options.healer, [], S2#state.view)},
+            S3 = S2#state{view = heal(S2#state.view,O#options.healer, [], S2#state.view)},
             Buffer = fillBuffer(S3#state.view, Buffer, ceil((O#options.c/2)) - 1),
             Peer ! {push, {self(), Buffer}}, 
             if
               (O#options.pull =:= true) -> 
                 receive 
                     {pull, {From, PeerBuffer}} -> 
-                      S4 = S3;%#state{view = selectView(S3#state.view, PeerBuffer, O#options.healer, O#options.swapper, O#options.c)}
+                      S4 = S3#state{view = selectView(S3#state.view, PeerBuffer, O#options.healer, O#options.swapper, O#options.c)};
                     {cycle} -> S4 = S3
                 end,
                 SF = S4#state{view = increaseAge(S4#state.view, [])};
@@ -124,10 +124,10 @@ passiveThread(S,O) ->
         {push, {From, PeerBuffer}} -> 
           Buffer = [[{S#state.id,self()},0]],
           S2 = S#state{view = permute(S#state.view)},
-          S3 = S2,%#state{view = heal(S2#state.view,O#options.healer, [],S2#state.view)},
+          S3 = S2#state{view = heal(S2#state.view,O#options.healer, [],S2#state.view)},
           Buffer = fillBuffer(S3#state.view, Buffer, ceil((O#options.c/2)) - 1),
           From ! {pull, {self(), Buffer}}, 
-          S4 = S3,%#state{view = selectView(S3#state.view, PeerBuffer, O#options.healer, O#options.swapper, O#options.c)},
+          S4 = S3#state{view = selectView(S3#state.view, PeerBuffer, O#options.healer, O#options.swapper, O#options.c)},
           S5 = S4#state{view = increaseAge(S4#state.view, [])},
           S5#state.master ! {updateState, {S5, S5#state.activePid}},
           passiveThread(S5,O)
@@ -183,7 +183,7 @@ getNeigPid(NeigID, BootServerPid) ->
 
 
 selectView(View, Buffer, H, S, C) -> 
-    remove_random(remove_head(head1(heal(keep_freshest_entrie(View ++ Buffer,[],[]),H,[], View ++ Buffer),H,[],C),S,C),lengthh(remove_head(head1(heal(keep_freshest_entrie(View ++ Buffer,[],[]),H,[], View ++ Buffer),H,[],C),S,C)) -C).
+    remove_head(head1(heal(keep_freshest_entrie(View ++ Buffer,[],[]),H,[], View ++ Buffer),H,[],C),S,C).
 
 % increase age of every element in a view
 increaseAge([],Acc) -> Acc;
@@ -208,7 +208,7 @@ permute(View) ->
     shuffle(View). %provisoire
 
 % move H oldest items to the end of the view
-heal([],0,Acc, [C|CS]) -> orderByAge(Acc,[]);
+heal([],0,Acc, [C|CS]) -> [C|CS];
 heal([V|VS],0,Acc, [C|CS]) -> [V|VS] ++ orderByAge(Acc,[]);
 heal([V|VS], H, Acc, [C|CS]) ->
     case (lengthh([C|CS]) >= H) of

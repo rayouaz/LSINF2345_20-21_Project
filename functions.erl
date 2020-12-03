@@ -66,6 +66,7 @@ head2(_,0,Result) -> Result;
 head2([],_,Result) -> Result;
 head2([V|VS],HC,Result) ->
     head2(VS,HC-1,Result ++ [V]).
+
 % remove H last elements
 head1([V|Vs],H,Result,C) -> 
     case lengthh([V|Vs]) < lists:min([lengthh([V|Vs])-C,H]) of
@@ -78,14 +79,24 @@ head1([V|Vs],H,Result,C) ->
     end.
 
 remove_head1(VS,0) ->VS;
-remove_head1([V|VS],Counter) ->
+remove_head1([_|VS],Counter) ->
+    io:format("Counter size ~p ~n", [Counter]),
     remove_head1(VS,Counter-1).
 
 remove_head([V|VS],S,C) ->
-    case lengthh([V|VS]) < lists:min([S,lengthh([V|VS])-C]) of
-        true -> [V|VS];
-        false -> remove_head1([V|VS],lists:min([S,lengthh([V|VS])-C]))
+    case (lengthh([V|VS]) - C) >= 0 of
+        true ->
+            case lengthh([V|VS]) =< lists:min([S,lengthh([V|VS])-C]) of
+                true -> [V|VS];
+                false -> remove_head1([V|VS],lists:min([S,lengthh([V|VS])-C]))
+            end;
+        false -> 
+            case (lengthh([V|VS]) =< S) of
+                true -> [V|VS];
+                false -> remove_head1([V|VS],S)
+            end
     end.
+
 
 remove(X, L) ->
     [Y || Y <- L, Y =/= X].
