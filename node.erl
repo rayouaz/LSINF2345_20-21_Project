@@ -2,7 +2,7 @@
 -export([initThreads/9, join/2, getNeigs/2, listen/0, peerSelection/2, activeThread/4, passiveThread/2] ).
 -import(lists, [append/2,min/1]).
 -import(timer, [sleep/1]).
--import(functions,[first/1,second_list/1,second/1,shuffle/1,getMaxAge/1,getMinAge/1,orderByAge/2,keep_freshest_entrie/3,head1/3,remove_head/2,remove/2,remove_random/2,lengthh/1]).
+-import(functions,[first/1,second_list/1,second/1,shuffle/1,getMaxAge/1,getMinAge/1,orderByAge/2,keep_freshest_entrie/3,head1/4,remove_head/3,remove/2,remove_random/2,lengthh/1,head2/3,remove_head1/2,remove_random1/2]).
 -record(options, {c, healer, swapper, pull, mode, cycleInMs}).
 -record(state, {id, master, buffer, view, passivePid, activePid, killed}).
 -record(log, {id, log}).
@@ -57,7 +57,7 @@ activeThread(S, O, Log, Counter) ->
             Peer = peerSelection(O#options.mode, S#state.view),
             Buffer = [[{S#state.id,self()},0]],
             S2 = S#state{view = permute(S#state.view)},
-            S3 = S2,%#state{view = heal(S2#state.view,O#options.healer, [])},
+            S3 = S2,%#state{view = heal(S2#state.view,O#options.healer, [], S2#state.view)},
             Buffer = fillBuffer(S3#state.view, Buffer, ceil((O#options.c/2)) - 1),
             Peer ! {push, {self(), Buffer}}, 
             if
@@ -117,7 +117,7 @@ passiveThread(S,O) ->
         {push, {From, PeerBuffer}} -> 
           Buffer = [[{S#state.id,self()},0]],
           S2 = S#state{view = permute(S#state.view)},
-          S3 = S2,%#state{view = heal(S2#state.view,O#options.healer, [])},
+          S3 = S2,%#state{view = heal(S2#state.view,O#options.healer, [],S2#state.view)},
           Buffer = fillBuffer(S3#state.view, Buffer, ceil((O#options.c/2)) - 1),
           From ! {pull, {self(), Buffer}}, 
           S4 = S3,%#state{view = selectView(S3#state.view, PeerBuffer, O#options.healer, O#options.swapper, O#options.c)},
@@ -175,8 +175,8 @@ getNeigPid(NeigID, BootServerPid) ->
 
 
 
-selectView(View, Buffer, H, S, C) ->
-    remove_random(remove_head(head1(heal(keep_freshest_entrie(View ++ Buffer,[],[]),lists:min([lengthh(View)-C,H]),[]),lists:min([lengthh(heal(keep_freshest_entrie(View ++ Buffer,[],[]),lists:min([lengthh(View)-C,H]),[]))-C,H]),[]),lists:min([lengthh(head1(heal(keep_freshest_entrie(View ++ Buffer,[],[]),lists:min([lengthh(View)-C,H]),[]),lists:min([lengthh(View)-C,H]),[]))-C,S])),lengthh(remove_head(head1(heal(keep_freshest_entrie(View ++ Buffer,[],[]),lists:min([lengthh(View)-C,H]),[]),lists:min([lengthh(heal(keep_freshest_entrie(View ++ Buffer,[],[]),lists:min([lengthh(View)-C,H]),[]))-C,H]),[]),lists:min([lengthh(head1(heal(keep_freshest_entrie(View ++ Buffer,[],[]),lists:min([lengthh(View)-C,H]),[]),lists:min([lengthh(View)-C,H]),[]))-C,S])))-C).
+selectView(View, Buffer, H, S, C) -> 
+    remove_random(remove_head(head1(heal(keep_freshest_entrie(View ++ Buffer,[],[]),H,[], View ++ Buffer),H,[],C),S,C),lengthh(remove_head(head1(heal(keep_freshest_entrie(View ++ Buffer,[],[]),H,[], View ++ Buffer),H,[],C),S,C)) -C).
 
 % increase age of every element in a view
 increaseAge([],Acc) -> Acc;
@@ -201,10 +201,13 @@ permute(View) ->
     shuffle(View). %provisoire
 
 % move H oldest items to the end of the view
-heal(View,0,Acc) -> 
-    View ++ [orderByAge(Acc,[])];
-heal([V|VS], H, Acc) ->
-    heal(lists:filter(fun (Elem) -> not lists:member(Elem, [getMaxAge([V|VS])]) end, [V|VS] ), H-1, Acc ++ [getMaxAge([V|VS])]).
+heal([],0,Acc, [C|CS]) -> orderByAge(Acc,[]);
+heal([V|VS],0,Acc, [C|CS]) -> [V|VS] ++ orderByAge(Acc,[]);
+heal([V|VS], H, Acc, [C|CS]) ->
+    case (lengthh([C|CS]) >= H) of
+        true -> heal(lists:filter(fun (Elem) -> not lists:member(Elem, [getMaxAge([V|VS])]) end, [V|VS] ), H-1, Acc ++ [getMaxAge([V|VS])], [C|CS]);
+        false -> heal([],0,[V|VS],[C|CS])
+    end.
 
 swap(view,swapper) ->
     view.
