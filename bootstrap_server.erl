@@ -12,8 +12,6 @@ listen(NodeId, Tree, PidList) ->
     { join, {From, NodePid} } ->
       NewTree = tree:add(NodeId , Tree),
       NewPidList =  [{NodeId, NodePid}] ++ PidList,
-      io:format("Latest tree: ~p~n", [ NewTree ]),
-      io:format("New Pid list: ~p~n", [ NewPidList ]),
       From ! { joinOk, NodeId },
       listen(NodeId + 1, NewTree, NewPidList);
     { getPeers, { From, ForNodeId } } ->

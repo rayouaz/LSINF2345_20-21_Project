@@ -3,7 +3,7 @@
 - import(lists, [concat/1, reverse/1]).
 -import(timer, [sleep/1]).
 - import(node, [join/2, getNeigs/2, listen/0, initThread/9]).
-- export([launch/1]).
+- export([launch/1, normal/1]).
 
 makeNet(N, BootServerPid) -> makeNet(N, BootServerPid, [], 0).
 
@@ -23,7 +23,7 @@ makeNet(N, BootServerPid, Net, Counter) ->
 
 startNet([], BootServerPid, CycleInMs, Counter) -> ok;
 startNet([{ID,PID}|T], BootServerPid, CycleInMs, Counter) ->
-    PID ! {initThreads, {BootServerPid, ID, 7, rand, true, 2, 3, CycleInMs, Counter}},    %change options here ID,size,mode,pull,H,s,cycleInMs
+    PID ! {initThreads, {BootServerPid, ID, 8, rand, true, 3, 3, CycleInMs, Counter}},    %change options here ID,size,mode,pull,H,s,cycleInMs
     startNet(T, BootServerPid, CycleInMs, Counter).
 
 cycle(NetList,0,CycleInMs,NetList) -> ok;
@@ -34,27 +34,51 @@ cycle([], N, CycleInMs, NetList) ->
   sleep(CycleInMs),
   cycle(NetList, N-1, CycleInMs, NetList).
 
+normal(N) ->
+  % Creates server with an empty tree
+  BootServerPid = spawn(bootstrap_server, listen, [ 0, {}, [] ]),
+  %NetList = makeNet(N, BootServerPid),
+  CycleInMs = 1000,
+  FourtyPercentLen = floor(N*0.4),
+  TwentyPercentLen = floor(N*0.2),
+
+  Net1 = makeNet(N, BootServerPid),
+  startNet(Net1, BootServerPid, CycleInMs,0),
+  cycle(Net1, 30, CycleInMs, Net1).
+
+
+
 launch(N) ->
   % Creates server with an empty tree
   BootServerPid = spawn(bootstrap_server, listen, [ 0, {}, [] ]),
-  NetList = makeNet(N, BootServerPid),
+  %NetList = makeNet(N, BootServerPid),
   CycleInMs = 1000,
-  FourtyPercentLen = floor(length(NetList)*0.4)-1,
-  TwentyPercentLen = floor(length(NetList)*0.2),
-  PhaseOne = getSublist(NetList, 0, FourtyPercentLen,0,[]),
-  PhaseTwo = getSublist(NetList, FourtyPercentLen, FourtyPercentLen+TwentyPercentLen, 0, []),
-  PhaseThree = getSublist(NetList, FourtyPercentLen+TwentyPercentLen, FourtyPercentLen+(TwentyPercentLen*2), 0, []),
-  PhaseFour = getSublist(NetList, FourtyPercentLen+(TwentyPercentLen*2), FourtyPercentLen+(TwentyPercentLen*3)+1, 0, []),
-  %io:format("hi ~p", [PhaseOne]),
+  FourtyPercentLen = floor(N*0.4),
+  TwentyPercentLen = floor(N*0.2),
+
+  Net1 = makeNet(FourtyPercentLen, BootServerPid),
+  PhaseOne = getSublist(Net1, 0, FourtyPercentLen,0,[]),
   startNet(PhaseOne, BootServerPid, CycleInMs,0),
-  cycle(PhaseOne, 30, CycleInMs, NetList),
+  cycle(PhaseOne, 30, CycleInMs, Net1),
+
+  Net2 =  makeNet(FourtyPercentLen+TwentyPercentLen, BootServerPid, Net1, FourtyPercentLen), 
+  PhaseTwo = getSublist(Net2, FourtyPercentLen, FourtyPercentLen+TwentyPercentLen, 0, []),
   startNet(PhaseTwo, BootServerPid, CycleInMs,30),
   PhaseOneTwo = lists:append(PhaseOne,PhaseTwo),
-  cycle(PhaseOneTwo, 30, CycleInMs, NetList),
+  cycle(PhaseOneTwo, 30, CycleInMs, Net2),
+
+  Net3 =  makeNet(FourtyPercentLen+(TwentyPercentLen*2), BootServerPid, Net2, FourtyPercentLen+TwentyPercentLen), 
+  PhaseThree = getSublist(Net3, FourtyPercentLen+TwentyPercentLen, FourtyPercentLen+(TwentyPercentLen*2), 0, []),
   startNet(PhaseThree, BootServerPid, CycleInMs,60),
-  cycle(lists:append(PhaseOneTwo, PhaseThree), 30, CycleInMs, NetList),
+  PhaseOneTwoThree = lists:append(PhaseOneTwo, PhaseThree),
+  cycle(PhaseOneTwoThree, 30, CycleInMs, Net3),
+
+  Net4 =  makeNet(FourtyPercentLen+(TwentyPercentLen*3), BootServerPid, Net3, FourtyPercentLen+(TwentyPercentLen*2)), 
+  PhaseFour = getSublist(Net4, FourtyPercentLen+(TwentyPercentLen*2), FourtyPercentLen+(TwentyPercentLen*3), 0, []),
   startNet(PhaseFour, BootServerPid, CycleInMs,90),
+  NetList = Net4,
   cycle(NetList, 30, CycleInMs, NetList),
+
   KilledProcess = kill(NetList, [], ceil(N*0.6)),
   cycle(NetList, 30 , CycleInMs, NetList),
   RecoverList = getSublist(KilledProcess, 0,floor(length(KilledProcess)*0.6),0 , []),

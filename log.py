@@ -20,9 +20,8 @@ def makePlot(mean, dev):
     pass
 
 
-#launch(15)
-N = 15
-#launch(N)
+N = 128
+launch(N)
 file = open("log.txt", 'r')
 fileR = str(file.read())
 source = fileR
@@ -31,18 +30,18 @@ listC = [ [0 for i in range(N) ] for i in range(180)]
 print(listC)
 for log in re.findall(p, source):
     for i in range(180):
-        logs = log.split(" ")
-        print(logs[1])
-        p2 = re.compile('{(.),')
-        indegs = re.findall(p2, log)
-        for indeg in indegs:
-            if int(logs[1]) == i:
-                listC[i][int(indeg)] = listC[i][int(indeg)] + 1 
+            logs = log.split(" ")
+            p2 = re.compile('{(.),')
+            indegs = re.findall(p2, log)
+            for indeg in indegs:
+                if int(logs[1]) == i:
+                    listC[i][int(indeg)] = listC[i][int(indeg)] + 1 
 print(listC)
-mathFile = open("deployment.data", 'w')
+mathFile = open("healer_deployment.data", 'w')
 count = 0
 for cycle in listC:
-    mean = statistics.mean(cycle)
-    dev = statistics.stdev(cycle)
-    mathFile.write(str(count) + " " + str(mean) + " " + str(dev) + "\n")
-    count = count + 1
+    #if (count%20 == 0):
+        mean = statistics.mean(cycle)
+        dev = statistics.stdev(cycle)
+        mathFile.write(str(count) + " " + str(mean) + " " + str(dev) + "\n")
+        count = count + 1
