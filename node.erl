@@ -113,11 +113,7 @@ passiveThread(S,O) ->
           S3 = S2#state{view = heal(S2#state.view,O#options.healer, [],S2#state.view)},
           Buffer2 = fillBuffer(S3#state.view, Buffer, ceil((O#options.c/2)) - 1),
           From ! {pull, {S3#state.master, Buffer2}}, 
-<<<<<<< HEAD
           %io:format("node ~p :: view before selectView: ~p  buffer before selectView: ~p~n", [S3#state.id ,S3#state.view, PeerBuffer]),
-=======
-          io:format("node ~p :: view before selectView: ~p  buffer before selectView: ~p~n", [S3#state.id ,S3#state.view, PeerBuffer ]),
->>>>>>> 3fc9ada77b93c4359faa29e440a72321e82d2762
           S4 = S3#state{view = selectView(S3#state.view, PeerBuffer, O#options.healer, O#options.swapper, O#options.c)},
           %io:format("node ~p :: view after selectView: ~p~n", [S4#state.id , S4#state.view]),
           S5 = S4#state{view = increaseAge(S4#state.view, [])},
