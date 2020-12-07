@@ -124,15 +124,15 @@ passiveThread(S,O) ->
 
 
 
-fillBuffer([], Buffer, Count) -> ok;
+fillBuffer([], Buffer, Count) -> Buffer;
 fillBuffer([H|T], Buffer, Count) ->
     if 
-      (Count == 0) -> Buffer;
+      (Count == 0) -> Buffer2 = Buffer;
       (Count > 0) ->
         NewBuffer = Buffer ++ [H],
-        fillBuffer(T, NewBuffer, Count-1)
+        Buffer2 = fillBuffer(T, NewBuffer, Count-1)
     end,
-    Buffer.
+    Buffer2.
 
 join(BootServerPid, NodePid) ->
   BootServerPid ! { join, {self(), NodePid} },
