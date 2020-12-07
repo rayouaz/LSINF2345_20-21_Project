@@ -21,17 +21,10 @@ makeNet(N, BootServerPid, Net, Counter) ->
   NewNet.
 
 
-<<<<<<< HEAD
 startNet([], BootServerPid, CycleInMs, Counter, H, S, C) -> ok;
 startNet([{ID,PID}|T], BootServerPid, CycleInMs, Counter, H, S, C) ->
     PID ! {initThreads, {BootServerPid, ID, C, rand, true, H, S, CycleInMs, Counter}},    %change options here ID,size,mode,pull,H,s,cycleInMs
     startNet(T, BootServerPid, CycleInMs, Counter, H, S, C).
-=======
-startNet([], BootServerPid, CycleInMs, Counter) -> ok;
-startNet([{ID,PID}|T], BootServerPid, CycleInMs, Counter) ->
-    PID ! {initThreads, {BootServerPid, ID, 2, rand, true, 3, 3, CycleInMs, Counter}},    %change options here ID,size,mode,pull,H,s,cycleInMs
-    startNet(T, BootServerPid, CycleInMs, Counter).
->>>>>>> 5615a250fede672ea6117946c209636d8e14e418
 
 cycle(NetList,0,CycleInMs,NetList) -> ok;
 cycle([{ID,PID}|T], N, CycleInMs, NetList) ->
