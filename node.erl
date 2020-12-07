@@ -124,7 +124,6 @@ passiveThread(S,O) ->
 
 
 
-fillBuffer([],[],_) -> ok;
 fillBuffer([], Buffer, Count) -> ok;
 fillBuffer([H|T], Buffer, Count) ->
     if 
@@ -172,7 +171,7 @@ getNeigPid(NeigID, BootServerPid) ->
 
 
 selectView(View, Buffer, H, S, C) -> 
-    remove_head(head1(heal(keep_freshest_entrie(View ++ Buffer,[],[]),H,[], View ++ Buffer),H,[],C),S,C).
+    remove_random(remove_head(head1(heal(keep_freshest_entrie(View ++ Buffer,[],[]),H,[], keep_freshest_entrie(View ++ Buffer,[],[])),H,[],C),S,C),C).
 
 % increase age of every element in a view
 increaseAge([],Acc) -> Acc;

@@ -105,7 +105,7 @@ remove_random1(V,0) -> V;
 remove_random1(V,C) -> 
     remove_random1(remove(lists:nth(rand:uniform(lengthh(V)), V),V),C-1).
 remove_random(V,C) ->
-    case lengthh(V) < C of
-        true -> V;
-        false -> remove_random1(V,lengthh(V)-(lengthh(V) -C))
+    case lengthh(V) > C of
+        true -> remove_random1(V,(lengthh(V) -C));
+        false -> V
     end.
