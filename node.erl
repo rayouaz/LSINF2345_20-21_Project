@@ -124,6 +124,7 @@ passiveThread(S,O) ->
 
 
 
+fillBuffer([],[],_) -> ok;
 fillBuffer([], Buffer, Count) -> ok;
 fillBuffer([H|T], Buffer, Count) ->
     if 
