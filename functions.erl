@@ -80,7 +80,7 @@ head1([V|Vs],H,Result,C) ->
 
 remove_head1(VS,0) ->VS;
 remove_head1([_|VS],Counter) ->
-    io:format("Counter size ~p ~n", [Counter]),
+    %io:format("Counter size ~p ~n", [Counter]),
     remove_head1(VS,Counter-1).
 
 remove_head([V|VS],S,C) ->
@@ -91,10 +91,7 @@ remove_head([V|VS],S,C) ->
                 false -> remove_head1([V|VS],lists:min([S,lengthh([V|VS])-C]))
             end;
         false -> 
-            case (lengthh([V|VS]) =< S) of
-                true -> [V|VS];
-                false -> remove_head1([V|VS],S)
-            end
+            [V|VS]
     end.
 
 
