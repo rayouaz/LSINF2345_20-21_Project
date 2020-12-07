@@ -1,15 +1,19 @@
 -module(functions).
--export([first/1,second_list/1,second/1, shuffle/1,getMaxAge/1,getMinAge/1,orderByAge/2,keep_freshest_entrie/3,head1/4,remove_head/3,remove/2,remove_random/2,lengthh/1,head2/3,remove_head1/2,remove_random1/2]).
+-export([first/1,second_list/1,second/1, shuffle/1,getMaxAge/1,getMinAge/1,orderByAge/2,keep_freshest_entrie/3,remove_old1/4,remove_head/3,remove/2,remove_random/2,lengthh/1,remove_old2/3,remove_head1/2,remove_random1/2]).
+
+% this file contains functions that help to implement operation in active thread, passive thread and selectView
 
 % return first element of a list
 first([X|_]) ->
     X.
 
+% return the list without the first element
 second_list([_|X]) ->
     X.
 
+% return the length of a list
 lengthh([]) -> 0;
-lengthh([X|XS]) -> 1 + lengthh(XS).
+lengthh([_|XS]) -> 1 + lengthh(XS).
 
 % return second element of a tuple
 second({_,Y}) ->
@@ -45,7 +49,7 @@ orderByAge([],Acc) -> Acc;
 orderByAge([V|VS], Acc) ->
     orderByAge(lists:filter(fun (Elem) -> not lists:member(Elem, [getMinAge([V|VS])]) end, [V|VS] ), Acc ++ [getMinAge([V|VS])]).
 
-% keep the freshest entries of a view after a pull
+% keep the freshest entries of a view after a pull (remove duplicates)
 keep_freshest_entrie([[{ID,Pid},Age]],[], Result) -> Result ++ [[{ID,Pid},Age]];
 keep_freshest_entrie([[{ID,Pid},Age]],Acc, Result) -> keep_freshest_entrie(Acc, [], Result ++ [[{ID,Pid},Age]]);
 keep_freshest_entrie([[{ID,Pid},Age], [{ID1,Pid1},Age1]|VS], Acc, Result) ->
@@ -62,27 +66,25 @@ keep_freshest_entrie([[{ID,Pid},Age], [{ID1,Pid1},Age1]|VS], Acc, Result) ->
             keep_freshest_entrie([[{ID,Pid},Age]|VS], Acc ++ [[{ID1,Pid1},Age1]], Result)
     end.
 
-head2(_,0,Result) -> Result;
-head2([],_,Result) -> Result;
-head2([V|VS],HC,Result) ->
-    head2(VS,HC-1,Result ++ [V]).
 
-% remove H last elements
-head1([V|Vs],H,Result,C) -> 
+% remove H last elements and then call remove_old2 to do this
+remove_old1([V|Vs],H,Result,C) -> 
     case lengthh([V|Vs]) < lists:min([lengthh([V|Vs])-C,H]) of
         true -> [V|Vs];
         false -> 
             case (H > lengthh([V|Vs]) -C) of
-                true -> head2([V|Vs],lengthh([V|Vs]) -(lengthh([V|Vs])-C),Result);
-                false -> head2([V|Vs],lengthh([V|Vs])-H,Result)
+                true -> remove_old2([V|Vs],lengthh([V|Vs]) -(lengthh([V|Vs])-C),Result);
+                false -> remove_old2([V|Vs],lengthh([V|Vs])-H,Result)
             end
     end.
 
-remove_head1(VS,0) ->VS;
-remove_head1([_|VS],Counter) ->
-    %io:format("Counter size ~p ~n", [Counter]),
-    remove_head1(VS,Counter-1).
+remove_old2(_,0,Result) -> Result;
+remove_old2([],_,Result) -> Result;
+remove_old2([V|VS],HC,Result) ->
+remove_old2(VS,HC-1,Result ++ [V]).
 
+
+% remove the min(S, view.size-c) first element from the view by calling remove_head1
 remove_head([V|VS],S,C) ->
     case (lengthh([V|VS]) - C) >= 0 of
         true ->
@@ -94,15 +96,20 @@ remove_head([V|VS],S,C) ->
             [V|VS]
     end.
 
+remove_head1(VS,0) ->VS;
+remove_head1([_|VS],Counter) ->
+    remove_head1(VS,Counter-1).
 
-remove(X, L) ->
-    [Y || Y <- L, Y =/= X].
 
-remove_random1(V,0) -> V;
-remove_random1(V,C) -> 
-    remove_random1(remove(lists:nth(rand:uniform(lengthh(V)), V),V),C-1).
 remove_random(V,C) ->
     case lengthh(V) > C of
         true -> remove_random1(V,(lengthh(V) -C));
         false -> V
     end.
+
+remove_random1(V,0) -> V;
+remove_random1(V,C) -> 
+    remove_random1(remove(lists:nth(rand:uniform(lengthh(V)), V),V),C-1).
+
+remove(X, L) ->
+    [Y || Y <- L, Y =/= X].
