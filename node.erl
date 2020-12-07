@@ -2,7 +2,7 @@
 -export([initThreads/9, join/2, getNeigs/2, listen/0, peerSelection/2, activeThread/4, passiveThread/2,heal/4,selectView/5]).
 -import(lists, [append/2,min/1]).
 -import(timer, [sleep/1]).
--import(functions,[first/1,second_list/1,second/1,shuffle/1,getMaxAge/1,getMinAge/1,orderByAge/2,keep_freshest_entrie/3,head1/4,remove_head/3,remove/2,remove_random/2,lengthh/1,head2/3,remove_head1/2,remove_random1/2]).
+-import(functions,[first/1,second_list/1,second/1,shuffle/1,getMaxAge/1,getMinAge/1,orderByAge/2,keep_freshest_entrie/3,remove_old1/4,remove_head/3,remove/2,remove_random/2,lengthh/1,remove_old2/3,remove_head1/2,remove_random1/2]).
 -record(options, {c, healer, swapper, pull, mode, cycleInMs}).
 -record(state, {id, master, buffer, view, passivePid, activePid, killed}).
 -record(log, {id, log}).
@@ -124,7 +124,7 @@ passiveThread(S,O) ->
 
 
 
-fillBuffer([], Buffer, Count) -> Buffer;
+fillBuffer([], Buffer, _) -> Buffer;
 fillBuffer([H|T], Buffer, Count) ->
     if 
       (Count == 0) -> Buffer2 = Buffer;
@@ -147,7 +147,7 @@ getNeigs(BootServerPid, NodeId) ->
     { getPeersOk, Neigs } -> Neigs
   end.
 
-getView({[]}, View, BootServerPid) -> View;
+getView({[]}, View, _) -> View;
 getView({[H|T]}, View, BootServerPid) ->
   if H =/= nil -> 
     NewView = [[{H,getNeigPid(H, BootServerPid)}, 0]] ++ View,
@@ -166,12 +166,9 @@ getNeigPid(NeigID, BootServerPid) ->
 
 
 
-%TODO
-
-
-
+% return an uptaded view after a pull
 selectView(View, Buffer, H, S, C) -> 
-    remove_head(head1(heal(keep_freshest_entrie(View ++ Buffer,[],[]),H,[], keep_freshest_entrie(View ++ Buffer,[],[])),H,[],C),S,C).
+    remove_random(remove_head(remove_old1(heal(keep_freshest_entrie(View ++ Buffer,[],[]),H,[], keep_freshest_entrie(View ++ Buffer,[],[])),H,[],C),S,C),C).
 
 % increase age of every element in a view
 increaseAge([],Acc) -> Acc;
@@ -192,21 +189,20 @@ peerSelection(tail,[V,V1|VS]) ->
        
         false -> peerSelection(tail,[V1|VS])
     end.
-    
+  
+% return a shuffled view
 permute(View) ->
-    shuffle(View). %provisoire
+    shuffle(View). 
 
 % move H oldest items to the end of the view
 heal([],_,_, []) -> [];
 heal([],_,_, [C|CS]) -> [C|CS];
-heal([],0,Acc, [C|CS]) -> [C|CS];
-heal([V|VS],0,Acc, [C|CS]) -> [V|VS] ++ orderByAge(Acc,[]);
+heal([],0,_, [C|CS]) -> [C|CS];
+heal([V|VS],0,Acc,_) -> [V|VS] ++ orderByAge(Acc,[]);
 heal([V|VS], H, Acc, [C|CS]) ->
     case (lengthh([C|CS]) > H) of
         true -> heal(lists:filter(fun (Elem) -> not lists:member(Elem, [getMaxAge([V|VS])]) end, [V|VS] ), H-1, Acc ++ [getMaxAge([V|VS])], [C|CS]);
         false -> heal([],0,[V|VS],[C|CS])
     end.
 
-swap(view,swapper) ->
-    view.
 
