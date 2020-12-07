@@ -113,7 +113,9 @@ passiveThread(S,O) ->
           S3 = S2#state{view = heal(S2#state.view,O#options.healer, [],S2#state.view)},
           Buffer = fillBuffer(S3#state.view, Buffer, ceil((O#options.c/2)) - 1),
           From ! {pull, {S3#state.master, Buffer}}, 
+          %io:format("view before heal selectView: ~p~n", [S3]),
           S4 = S3#state{view = selectView(S3#state.view, PeerBuffer, O#options.healer, O#options.swapper, O#options.c)},
+          %io:format("view after heal selectView: ~p~n", [S4]),
           S5 = S4#state{view = increaseAge(S4#state.view, [])},
           S5#state.master ! {updateState, {S5, S5#state.activePid}},
           passiveThread(S5,O)
@@ -178,6 +180,7 @@ increaseAge([[{ID,Pid},Age]|VS], Acc) ->
 
 
 % return random node from the view
+peerSelection(rand,[]) -> [];
 peerSelection(rand, View) -> second(first(lists:nth(rand:uniform(length(View)),View)));
 
 % return node with highest age in the view
@@ -194,10 +197,12 @@ permute(View) ->
     shuffle(View). %provisoire
 
 % move H oldest items to the end of the view
+heal([],_,_, []) -> [];
+heal([],_,_, [C|CS]) -> [C|CS];
 heal([],0,Acc, [C|CS]) -> [C|CS];
 heal([V|VS],0,Acc, [C|CS]) -> [V|VS] ++ orderByAge(Acc,[]);
 heal([V|VS], H, Acc, [C|CS]) ->
-    case (lengthh([C|CS]) >= H) of
+    case (lengthh([C|CS]) > H) of
         true -> heal(lists:filter(fun (Elem) -> not lists:member(Elem, [getMaxAge([V|VS])]) end, [V|VS] ), H-1, Acc ++ [getMaxAge([V|VS])], [C|CS]);
         false -> heal([],0,[V|VS],[C|CS])
     end.
