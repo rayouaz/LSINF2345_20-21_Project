@@ -57,8 +57,8 @@ activeThread(S, O, Log, Counter) ->
           Buffer = [[{S#state.id,S#state.master},0]],
           S2 = S#state{view = permute(S#state.view)},
           S3 = S2#state{view = heal(S2#state.view,O#options.healer, [], S2#state.view)},
-          Buffer = fillBuffer(S3#state.view, Buffer, ceil((O#options.c/2)) - 1),
-          Peer ! {push, {S3#state.master, Buffer}}, 
+          Buffer2 = fillBuffer(S3#state.view, Buffer, ceil((O#options.c/2)) - 1),
+          Peer ! {push, {S3#state.master, Buffer2}}, 
           if
             (O#options.pull =:= true) -> 
               receive 
@@ -111,11 +111,11 @@ passiveThread(S,O) ->
           Buffer = [[{S#state.id,S#state.master},0]],
           S2 = S#state{view = permute(S#state.view)},
           S3 = S2#state{view = heal(S2#state.view,O#options.healer, [],S2#state.view)},
-          Buffer = fillBuffer(S3#state.view, Buffer, ceil((O#options.c/2)) - 1),
-          From ! {pull, {S3#state.master, Buffer}}, 
-          %io:format("view before heal selectView: ~p~n", [S3]),
+          Buffer2 = fillBuffer(S3#state.view, Buffer, ceil((O#options.c/2)) - 1),
+          From ! {pull, {S3#state.master, Buffer2}}, 
+          io:format("node ~p :: view before selectView: ~p  buffer before selectView: ~p~n", [S3#state.id ,S3#state.view, Buffer2 ]),
           S4 = S3#state{view = selectView(S3#state.view, PeerBuffer, O#options.healer, O#options.swapper, O#options.c)},
-          %io:format("view after heal selectView: ~p~n", [S4]),
+          io:format("node ~p :: view after selectView: ~p~n", [S4#state.id , S4#state.view]),
           S5 = S4#state{view = increaseAge(S4#state.view, [])},
           S5#state.master ! {updateState, {S5, S5#state.activePid}},
           passiveThread(S5,O)
@@ -127,7 +127,7 @@ passiveThread(S,O) ->
 fillBuffer([], Buffer, Count) -> ok;
 fillBuffer([H|T], Buffer, Count) ->
     if 
-      (Count == 0) -> ok;
+      (Count == 0) -> Buffer;
       (Count > 0) ->
         NewBuffer = Buffer ++ [H],
         fillBuffer(T, NewBuffer, Count-1)
