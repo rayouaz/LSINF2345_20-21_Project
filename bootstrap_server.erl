@@ -7,7 +7,7 @@
 
 
 listen(NodeId, Tree, PidList) ->
-  io:format("Bootstrap server is listening...~n", []),
+  %io:format("Bootstrap server is listening...~n", []),
   receive
     { join, {From, NodePid} } ->
       NewTree = tree:add(NodeId , Tree),

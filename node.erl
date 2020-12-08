@@ -8,7 +8,7 @@
 -record(log, {id, log}).
 
 initThreads(Id, Size, Select, WithPull, H, S, Ms, BootstrapPID, Counter) ->
-    io:format("hello ~p~n", [Id]),
+    %io:format("hello ~p~n", [Id]),
     St = #state{id = Id , master = self(), buffer = [], view = getView(getNeigs(BootstrapPID, Id), [], BootstrapPID), passivePid = -1, activePid = -1, killed = false},
     O = #options{c = Size, healer = H, swapper = S, pull = WithPull, mode = Select, cycleInMs = Ms},
     Log = #log{id = Id, log = []},
@@ -51,7 +51,7 @@ activeThread(S, O, Log, Counter) ->
     {cycle} -> 
       if 
         (S#state.killed =/= true) ->
-          io:format("log:: ~p ~p ~p~n", [S#state.id, Counter, S#state.view]),
+          io:format("log:: ~p ~p ~p $~n", [S#state.id, Counter, S#state.view]),
           %Log = Log ++[C ounter,S#state.view],
           Peer = peerSelection(O#options.mode, S#state.view),
           Buffer = [[{S#state.id,S#state.master},0]],
@@ -81,15 +81,15 @@ activeThread(S, O, Log, Counter) ->
     {kill} -> 
       S2 = S#state{killed = true},
       S2#state.master ! {updateState, {S2, S2#state.passivePid}},
-      io:format("~p killed ~n", [S#state.id]),
+      %io:format("~p killed ~n", [S#state.id]),
       activeThread(S2, O, Log, Counter);
 
     {recover, Elected} -> 
-      io:format("~p recovered ~n", [S#state.id]),
+      %io:format("~p recovered ~n", [S#state.id]),
       NewView = [[Elected,0]],
       S2 = S#state{view = NewView},
       S3 = S2#state{killed = false},
-      io:format("~p new view ~n", [S3#state.view]),
+      %io:format("~p new view ~n", [S3#state.view]),
       S3#state.master ! {updateState, {S3, S3#state.passivePid}},
       activeThread(S3, O, Log, Counter);
 
