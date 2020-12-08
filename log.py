@@ -32,8 +32,7 @@ file = open("source.txt", 'w')
 file.write(source)
 print(source)
 p = re.findall(re.compile('log::([<{}>, [\].0-9]*)'), source)
-#e = p.group(1)
-#print(e)
+
 listC = [ [0 for i in range(N) ] for i in range(180)]
 for log in p:
     for i in range(180):
@@ -41,13 +40,9 @@ for log in p:
             #print(logs)
             p2 = re.compile('{([0-9]*)')
             indegs = re.findall(p2, log)
-            #print("el log: ",log)
-            #print("indegs: ", indegs)
-            #print(logs)
-            #print(logs[2])
+   
             for indeg in indegs:
                 if int(logs[2]) == i:
-                    #print(logs[1])
                     listC[i][int(indeg)] = listC[i][int(indeg)] + 1 
 print(listC)
 mathFile = open("healer_deployment2.data", 'w')
