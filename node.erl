@@ -24,7 +24,7 @@ initThreads(Id, Size, Select, WithPull, H, S, Ms, BootstrapPID, Counter) ->
 listen() ->
   receive
     kill -> ok;
-    {initThreads, {BootstrapPID, Id, Size, Select, WithPull, H, S, Ms, Counter}} -> 
+    {initThreads, {BootstrapPID, Id, Size, Select, WithPull, H, S, Ms, Counter}} ->
         initThreads(Id, Size, Select, WithPull, H, S, Ms, BootstrapPID,Counter)
   end.
 
@@ -36,20 +36,20 @@ listen(ActiveThreadPid, PassiveThreadPid) ->
     {push, {From, PeerBuffer}} -> PassiveThreadPid ! {push, {From, PeerBuffer}};
     {pull, {From, PeerBuffer}} -> ActiveThreadPid ! {pull, {From, PeerBuffer}};
     {askPassive} -> ActiveThreadPid ! {ping, {PassiveThreadPid}};
-    {updateState, {State, To}} -> 
+    {updateState, {State, To}} ->
       To ! {updateState, {State}},
       receive
         {updated} ->  ok
-      end 
+      end
   end,
   listen(ActiveThreadPid, PassiveThreadPid).
 
 
-activeThread(S, O, Log, Counter) -> 
-  
-  receive 
-    {cycle} -> 
-      if 
+activeThread(S, O, Log, Counter) ->
+
+  receive
+    {cycle} ->
+      if
         (S#state.killed =/= true) ->
           io:format("log:: ~p ~p ~p $~n", [S#state.id, Counter, S#state.view]),
           %Log = Log ++[C ounter,S#state.view],
@@ -57,34 +57,34 @@ activeThread(S, O, Log, Counter) ->
           Buffer = [[{S#state.id,S#state.master},0]],
           S2 = S#state{view = permute(S#state.view)},
           S3 = S2#state{view = heal(S2#state.view,O#options.healer, [], S2#state.view)},
-          Buffer2 = fillBuffer(S3#state.view, Buffer, ceil((O#options.c/2)) - 1),
-          Peer ! {push, {S3#state.master, Buffer2}}, 
+          Buffer2 = fillBuffer(S3#state.view, Buffer, trunc((O#options.c/2))),
+          Peer ! {push, {S3#state.master, Buffer2}},
           if
-            (O#options.pull =:= true) -> 
+            (O#options.pull =:= true) ->
               receive 
-                  {pull, {From, PeerBuffer}} -> 
+                  {pull, {From, PeerBuffer}} ->
                     S4 = S3#state{view = selectView(S3#state.view, PeerBuffer, O#options.healer, O#options.swapper, O#options.c)}
               after
                       100 -> S4 = S3
               end,
               SF = S4#state{view = increaseAge(S4#state.view, [])};
-            (O#options.pull =/= true) -> 
+            (O#options.pull =/= true) ->
               SF = S3#state{view = increaseAge(S3#state.view, [])}
           end,
           SF#state.master ! {updateState, {SF, SF#state.passivePid}},
           activeThread(SF, O, Log, Counter+1);
-      (S#state.killed =:= true) -> 
+      (S#state.killed =:= true) ->
         S#state.master ! {updateState, {S, S#state.passivePid}},
         activeThread(S, O, Log, Counter+1)
       end;
 
-    {kill} -> 
+    {kill} ->
       S2 = S#state{killed = true},
       S2#state.master ! {updateState, {S2, S2#state.passivePid}},
       %io:format("~p killed ~n", [S#state.id]),
       activeThread(S2, O, Log, Counter);
 
-    {recover, Elected} -> 
+    {recover, Elected} ->
       %io:format("~p recovered ~n", [S#state.id]),
       NewView = [[Elected,0]],
       S2 = S#state{view = NewView},
@@ -100,19 +100,19 @@ activeThread(S, O, Log, Counter) ->
     end.
 
 
-passiveThread(S,O) -> 
-    receive 
-        {updateState, {State}} -> 
+passiveThread(S,O) ->
+    receive
+        {updateState, {State}} ->
           S2 = State,
           S2#state.master ! {updated},
           passiveThread(S2,O);
 
-        {push, {From, PeerBuffer}} -> 
+        {push, {From, PeerBuffer}} ->
           Buffer = [[{S#state.id,S#state.master},0]],
           S2 = S#state{view = permute(S#state.view)},
           S3 = S2#state{view = heal(S2#state.view,O#options.healer, [],S2#state.view)},
-          Buffer2 = fillBuffer(S3#state.view, Buffer, ceil((O#options.c/2)) - 1),
-          From ! {pull, {S3#state.master, Buffer2}}, 
+          Buffer2 = fillBuffer(S3#state.view, Buffer, trunc((O#options.c/2)) - 1),
+          From ! {pull, {S3#state.master, Buffer2}},
           %io:format("node ~p :: view before selectView: ~p  buffer before selectView: ~p~n", [S3#state.id ,S3#state.view, PeerBuffer]),
           S4 = S3#state{view = selectView(S3#state.view, PeerBuffer, O#options.healer, O#options.swapper, O#options.c)},
           %io:format("node ~p :: view after selectView: ~p~n", [S4#state.id , S4#state.view]),
@@ -126,7 +126,7 @@ passiveThread(S,O) ->
 
 fillBuffer([], Buffer, _) -> Buffer;
 fillBuffer([H|T], Buffer, Count) ->
-    if 
+    if
       (Count == 0) -> Buffer2 = Buffer;
       (Count > 0) ->
         NewBuffer = Buffer ++ [H],
@@ -149,12 +149,12 @@ getNeigs(BootServerPid, NodeId) ->
 
 getView({[]}, View, _) -> View;
 getView({[H|T]}, View, BootServerPid) ->
-  if H =/= nil -> 
+  if H =/= nil ->
     NewView = [[{H,getNeigPid(H, BootServerPid)}, 0]] ++ View,
     getView({T}, NewView, BootServerPid);
-    H =:= nil -> 
+    H =:= nil ->
     getView({T}, View, BootServerPid)
-  end. 
+  end.
 
 
 getNeigPid(NeigID, BootServerPid) ->
@@ -167,12 +167,12 @@ getNeigPid(NeigID, BootServerPid) ->
 
 
 % return an uptaded view after a pull
-selectView(View, Buffer, H, S, C) -> 
+selectView(View, Buffer, H, S, C) ->
     remove_random(remove_head(remove_old1(heal(keep_freshest_entrie(View ++ Buffer,[],[]),H,[], keep_freshest_entrie(View ++ Buffer,[],[])),H,[],C),S,C),C).
 
 % increase age of every element in a view
 increaseAge([],Acc) -> Acc;
-increaseAge([[{ID,Pid},Age]|VS], Acc) -> 
+increaseAge([[{ID,Pid},Age]|VS], Acc) ->
     increaseAge(VS,Acc ++ [[{ID,Pid},Age +1]]).
 
 
@@ -186,13 +186,13 @@ peerSelection(tail,[V]) -> second(first(V));
 peerSelection(tail,[V,V1|VS]) ->
     case second_list(V) >= second_list(V1) of
         true -> peerSelection(tail,[V|VS]);
-       
+
         false -> peerSelection(tail,[V1|VS])
     end.
-  
+
 % return a shuffled view
 permute(View) ->
-    shuffle(View). 
+    shuffle(View).
 
 % move H oldest items to the end of the view
 heal([],_,_, []) -> [];
@@ -204,5 +204,3 @@ heal([V|VS], H, Acc, [C|CS]) ->
         true -> heal(lists:filter(fun (Elem) -> not lists:member(Elem, [getMaxAge([V|VS])]) end, [V|VS] ), H-1, Acc ++ [getMaxAge([V|VS])], [C|CS]);
         false -> heal([],0,[V|VS],[C|CS])
     end.
-
-
